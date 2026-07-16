@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metacausal"
+version = "0.7.0"
+description = "Cross-framework causal-ML ensembles for ATE and CATE with full-pipeline bootstrap inference"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    {name = "Mansour T. A. Sharabiani"},
+    {name = "Alireza S. Mahani", email = "alireza.s.mahani@gmail.com"},
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "joblib>=1.2",
+    "numpy>=1.24",
+    "pandas>=1.5",
+    "scipy>=1.9",
+    "scikit-learn>=1.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/asmahani/metacausal"
+Repository = "https://github.com/asmahani/metacausal"
+Issues = "https://github.com/asmahani/metacausal/issues"
+Changelog = "https://github.com/asmahani/metacausal/blob/main/CHANGELOG.md"
+# Not live yet -- GitHub Pages publishing requires a public repo (the
+# repo is currently private); the deploy-docs CI job is already wired
+# up and will start publishing here automatically once it goes public.
+Documentation = "https://asmahani.github.io/metacausal/"
+
+[project.optional-dependencies]
+# Floors and caps both anchored to the exact patch validated by CI on
+# the most recent main-branch run (also current PyPI latest). Caps sit
+# at the next patch — not the next minor — because upstream patches in
+# this ecosystem have been observed to change semantics silently
+# (stochtree 0.4.0 → 0.4.2 reparameterized BCF `terms="tau"`; see
+# StochasticTree/stochtree#376 and metacausal 0.2.1 release notes).
+# Patch-level caps mean every upstream release lands outside the cap,
+# triggers a Dependabot PR, and runs the integration tier
+# (`pytest -m integration`) before we widen.
+econml = ["econml>=0.16.0,<0.16.1"]
+doubleml = ["doubleml>=0.11.2,<0.11.3"]
+stochtree = ["stochtree>=0.4.2,<0.4.3"]
+causalml = ["causalml>=0.16.0,<0.16.1"]
+plots = ["matplotlib>=3.5"]
+all = [
+    "econml>=0.16.0,<0.16.1",
+    "doubleml>=0.11.2,<0.11.3",
+    "stochtree>=0.4.2,<0.4.3",
+    "causalml>=0.16.0,<0.16.1",
+    "matplotlib>=3.5",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+]
+docs = [
+    "sphinx>=7.2",
+    "furo>=2024.1.29",
+    "myst-parser>=2.0",
+    "sphinx-copybutton>=0.5.2",
+]
+
+[tool.setuptools.packages.find]
+include = ["metacausal*"]
+
+[tool.setuptools.package-data]
+"metacausal.datasets" = ["*.csv"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: end-to-end tests that fit the full default pool on real data; the slowest individual tests in the suite. Opt out with `pytest -m 'not slow'`.",
+    "integration: tests that exercise real upstream library APIs (DoubleML, EconML, stochtree) with focused per-class round-trips and contract assertions. Run by default; select with `pytest -m integration`.",
+]
+# All tests run by default. Selective runs: `pytest -m integration`,
+# `pytest -m "not slow"`, etc.

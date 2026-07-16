@@ -1,0 +1,22 @@
+/* Each `autosummary` table on the API reference page sizes its own
+   name column independently, so the description column starts at a
+   different x-position section to section. Pin the name column to a
+   fixed width so every table lines up. */
+table.autosummary td:first-child {
+  width: 260px;
+  min-width: 260px;
+  white-space: nowrap;
+}
+
+/* Furo always renders the *full* toctree depth in the sidebar nav
+   (it hardcodes maxdepth=-1 in its own navigation-tree code, ignoring
+   the toctree directive's `maxdepth`), so the ~50 per-class/function
+   pages sphinx.ext.autosummary's `:toctree: generated` produces would
+   otherwise flood the persistent left sidebar as a flat, unsectioned
+   list. Collapse that second level; every one of those pages is still
+   fully reachable from the tables on the API reference page itself. */
+.sidebar-tree li.toctree-l1.has-children > ul,
+.sidebar-tree li.toctree-l1.has-children > label,
+.sidebar-tree li.toctree-l1.has-children > input.toctree-checkbox {
+  display: none;
+}
