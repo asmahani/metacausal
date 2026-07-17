@@ -37,9 +37,6 @@ Homepage = "https://github.com/asmahani/metacausal"
 Repository = "https://github.com/asmahani/metacausal"
 Issues = "https://github.com/asmahani/metacausal/issues"
 Changelog = "https://github.com/asmahani/metacausal/blob/main/CHANGELOG.md"
-# Not live yet -- GitHub Pages publishing requires a public repo (the
-# repo is currently private); the deploy-docs CI job is already wired
-# up and will start publishing here automatically once it goes public.
 Documentation = "https://asmahani.github.io/metacausal/"
 
 [project.optional-dependencies]

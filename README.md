@@ -5,6 +5,7 @@ Cross-framework ensembling of causal machine-learning estimators for ATE and poi
 [![PyPI version](https://img.shields.io/pypi/v/metacausal)](https://pypi.org/project/metacausal/)
 [![Python versions](https://img.shields.io/pypi/pyversions/metacausal)](https://pypi.org/project/metacausal/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/asmahani/metacausal/blob/main/LICENSE)
+[![Docs](https://img.shields.io/badge/docs-latest-blue)](https://asmahani.github.io/metacausal/)
 
 ## What it is
 
