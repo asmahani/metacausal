@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Floor (3.11 = requires-python, set by causalml 0.16's own
+        # Python floor) and ceiling (latest stable). Pinning two
+        # boundaries catches divergence between them without a full
+        # 3.11/3.12/3.13 fan-out.
+        python-version: ["3.11", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package and test extras
+        # Bounded pins in pyproject resolve to the latest version
+        # within each cap; this is the "latest-within-range" job that
+        # provides the safety check for Dependabot bumps.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[all,dev]"
+
+      - name: Run test suite
+        # Default markers run everything (mocks + integration); the
+        # ``slow`` and ``integration`` markers are opt-in for selective
+        # runs but not exclusionary in CI.
+        run: pytest -v
+
+      - name: Show installed upstream versions
+        # Logged for compatibility-table sanity checks and Dependabot
+        # PR review — makes the resolved version of each upstream
+        # explicit in the CI output.
+        if: always()
+        run: |
+          pip show doubleml econml causalml stochtree | grep -E "^(Name|Version)"
+
+  docs:
+    runs-on: ubuntu-latest
+    env:
+      # Headless CI runner has no display; force the non-interactive Agg
+      # backend up front so plotting docstring examples (metacausal.plots.*)
+      # don't each need their own matplotlib.use("Agg") call, and don't try
+      # to open a GUI window during the doctest builder run.
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package, docs, and full extras
+        # Full extras (not just [docs]) so autodoc can actually import every
+        # adapter module (metacausal.adapters.econml, .causalml, etc.) and
+        # metacausal.plots (needs matplotlib) when generating their pages.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[all,docs]"
+
+      - name: Build HTML docs (warnings as errors)
+        # -W promotes every Sphinx warning (broken cross-reference, malformed
+        # docstring markup, autodoc import failure, ...) to a build failure —
+        # the mechanical check called for in the v3 point-to-point reply so
+        # docstring regressions are caught here instead of by manual review.
+        run: python -m sphinx -b html -W docs docs/_build/html
+
+      - name: Run doctest builder
+        # Executes every `>>>` example embedded in docstrings/pages, so a
+        # docstring example that stops matching the current API fails CI
+        # instead of silently going stale.
+        run: python -m sphinx -b doctest docs docs/_build/doctest
+
+  deploy-docs:
+    needs: docs
+    # GitHub Pages publishing is unavailable on a private repo (confirmed
+    # directly against the Pages API, not just docs: 422 "Your current plan
+    # does not support GitHub Pages for this repository"). Skip -- not
+    # fail -- while private; this starts deploying automatically, with no
+    # further changes needed, the first time this runs after the repo goes
+    # public.
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      github.event.repository.private == false
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package, docs, and full extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[all,docs]"
+
+      - name: Build HTML docs
+        run: python -m sphinx -b html docs docs/_build/html
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_build/html
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
