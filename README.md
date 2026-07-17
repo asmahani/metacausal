@@ -310,7 +310,7 @@ A BibTeX entry will be added here when the arXiv preprint of the accompanying ma
 
 ## Release notes
 
-See [CHANGELOG.md](CHANGELOG.md) for the full version history. Latest: **0.7.0 (Unreleased)** — a new `Select` aggregation strategy, a core-oversubscription fix for CausalML's R-Learner, plotting functions now also reachable as methods, a Sphinx API reference, and several non-executable docstring/README example fixes.
+See [CHANGELOG.md](CHANGELOG.md) for the full version history. Latest: **0.7.0** — a new `Select` aggregation strategy, a core-oversubscription fix for CausalML's R-Learner, plotting functions now also reachable as methods, a Sphinx API reference, and several non-executable docstring/README example fixes.
 
 ## License
 
