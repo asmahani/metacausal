@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it using the metadata below.
+  (A companion paper is currently under review; this file will be
+  updated with a preferred-citation entry for it if/when published.)
+type: software
+title: "MetaCausal: Cross-Framework Causal-ML Ensembles for ATE and CATE Estimation"
+authors:
+  - family-names: "Sharabiani"
+    given-names: "Mansour T. A."
+  - family-names: "Mahani"
+    given-names: "Alireza S."
+    email: alireza.s.mahani@gmail.com
+version: 0.7.0
+# Placeholder -- update to the actual tag date at release time (same
+# bookkeeping step as dating the CHANGELOG.md "0.7.0 (Unreleased)" header).
+date-released: "2026-07-17"
+repository-code: "https://github.com/asmahani/metacausal"
+url: "https://asmahani.github.io/metacausal/"
+license: MIT
+keywords:
+  - causal inference
+  - treatment effect estimation
+  - ensemble methods
+  - machine learning
+  - Python

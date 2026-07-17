@@ -1,0 +1,17 @@
+version: 2
+updates:
+  # pyproject.toml intentionally caps several optional-extra dependencies
+  # (econml, causalml, doubleml, stochtree) at the exact patch validated
+  # by CI, specifically so that upstream patch releases outside the cap
+  # trigger a Dependabot PR rather than resolving silently -- see the
+  # comments above [project.optional-dependencies] in pyproject.toml.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
