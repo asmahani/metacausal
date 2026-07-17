@@ -28,8 +28,3 @@ overhead exceeds the parallel speedup.
 Also: use `.venv/bin/pytest`, not the system `python3 -m pytest` —
 package extras like `econml`, `causalml`, `doubleml`, `stochtree` are
 installed only inside the project virtualenv.
-
-## Git
-
-When creating git commits for this repository, do not include a
-Copilot/AI co-author trailer unless explicitly requested.
