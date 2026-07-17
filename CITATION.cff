@@ -12,8 +12,6 @@ authors:
     given-names: "Alireza S."
     email: alireza.s.mahani@gmail.com
 version: 0.7.0
-# Placeholder -- update to the actual tag date at release time (same
-# bookkeeping step as dating the CHANGELOG.md "0.7.0 (Unreleased)" header).
 date-released: "2026-07-17"
 repository-code: "https://github.com/asmahani/metacausal"
 url: "https://asmahani.github.io/metacausal/"
