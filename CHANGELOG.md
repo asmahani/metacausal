@@ -4,6 +4,10 @@ All notable changes to MetaCausal are documented here. Dates are
 release dates; "Unreleased" entries describe changes on `main` not yet
 tagged.
 
+## Unreleased
+
+- **Widened the `causalml`, `stochtree`, and `doubleml` caps** to admit each library's current latest patch/minor (`causalml<0.17.1`, `stochtree<0.4.6`, `doubleml<0.11.4`), validating CI (including `pytest -m integration`) against `causalml==0.17.0`, `stochtree==0.4.5`, and `doubleml==0.11.3`. Floors are unchanged; per the versioning policy in `pyproject.toml`, only the cap moves until the floor itself is deliberately re-validated and bumped.
+
 ## 0.7.0 — 2026-07-17
 
 - **New aggregation strategy: `Select`.** Chooses the single component model minimizing a pseudo-outcome risk (`loss="dr"` for DR/AIPW plug-in risk, `loss="r"` for R-risk on the Robinson residuals) instead of combining components. Implemented as a `SupervisedStrategy` so it shares cross-fitted nuisance estimation, `EnsembleWeights` introspection, and bootstrap with the true aggregators — it returns a one-hot weight vector rather than a blend. `Select(loss="dr")` is the closed-form vertex of `QAggregation`'s `nu=1` limit, computed directly by argmin rather than via the general solver. Serves as the feasible-selection comparator for ensemble-vs-selection studies.
