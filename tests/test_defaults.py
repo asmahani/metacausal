@@ -113,6 +113,49 @@ class TestRLearnerSerialCrossFit:
             default_methods("survival")
 
 
+class TestRLearnerPropensityOverride:
+    """CausalML's BaseRLearner ignores a user-supplied ``propensity_learner``
+    on a fresh instance's first ``fit()`` (uber/causalml#937, fixed on their
+    master but not yet released): ``_set_propensity_models()`` reads
+    ``self.model_p`` before it is ever assigned from ``propensity_learner``,
+    so it silently falls back to CausalML's own ``ElasticNetPropensityModel``
+    default. The shipped default pools work around this by setting
+    ``model_p`` directly.
+    """
+
+    def test_continuous_pool_r_learner_model_p_is_hgb(self):
+        from sklearn.ensemble import HistGradientBoostingClassifier
+
+        methods = default_methods()
+        r_learner = next(m for m in methods if type(m).__name__ == "BaseRRegressor")
+        assert isinstance(r_learner.model_p, HistGradientBoostingClassifier)
+
+    def test_binary_pool_r_classifier_model_p_is_hgb(self):
+        from sklearn.ensemble import HistGradientBoostingClassifier
+
+        methods = default_methods("binary")
+        r_classifier = next(m for m in methods if type(m).__name__ == "BaseRClassifier")
+        assert isinstance(r_classifier.model_p, HistGradientBoostingClassifier)
+
+    def test_continuous_pool_r_learner_uses_hgb_propensity_on_first_fit(self):
+        """Regression test for the fit-order bug: without the model_p
+        workaround, a fresh BaseRRegressor's first fit silently uses
+        CausalML's ElasticNetPropensityModel instead of our HGB override."""
+        from sklearn.ensemble import HistGradientBoostingClassifier
+
+        X, T, Y = load_lalonde()
+        methods = default_methods()
+        r_learner = next(m for m in methods if type(m).__name__ == "BaseRRegressor")
+        r_learner.fit(X, T, Y, verbose=False)
+
+        for group, model in r_learner.propensity_model.items():
+            assert isinstance(model, HistGradientBoostingClassifier), (
+                f"group {group}: expected HGB propensity model, got "
+                f"{type(model).__name__} -- the model_p ordering workaround "
+                f"may have regressed"
+            )
+
+
 @pytest.mark.slow
 def test_binary_default_ensemble_fits_on_synthetic_dgp():
     """Every binary-pool component fits on a synthetic binary DGP and

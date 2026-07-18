@@ -114,6 +114,18 @@ def default_methods(outcome_type: str = "continuous") -> list:
     # hence the post-construction attribute set. Mirrors the CausalForestDML
     # n_jobs=1 treatment below.
     r_learner.cv_n_jobs = 1
+    # model_p=...: work around a CausalML bug (uber/causalml#937, fixed on
+    # their master but not yet in a PyPI release as of causalml 0.17.0).
+    # BaseRLearner.fit() calls _set_propensity_models(), which reads
+    # self.model_p to decide whether to use our HGB propensity_learner or
+    # fall back to CausalML's own ElasticNetPropensityModel default -- but
+    # self.model_p is only assigned from self.propensity_learner *after*
+    # that call, so on a fresh instance our propensity_learner is silently
+    # ignored on every fit. ElasticNetPropensityModel's saga+elasticnet grid
+    # search then floods ConvergenceWarnings on Lalonde-sized data. Setting
+    # model_p directly sidesteps the ordering bug. Harmless once CausalML
+    # ships the upstream fix (it would just set the same value twice).
+    r_learner.model_p = default_propensity_model()
 
     return [
         # Semiparametric doubly-robust
@@ -187,6 +199,9 @@ def _default_methods_binary() -> list:
     )
     # cv_n_jobs=1: see the continuous pool's BaseRRegressor comment above.
     r_classifier.cv_n_jobs = 1
+    # model_p=...: see the continuous pool's BaseRRegressor comment above
+    # (uber/causalml#937) -- BaseRClassifier shares the same bug.
+    r_classifier.model_p = prop()
 
     return [
         # Semiparametric doubly-robust

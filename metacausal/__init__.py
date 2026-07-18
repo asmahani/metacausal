@@ -1,5 +1,7 @@
 """MetaCausal — Robust treatment effect estimation via ensembling."""
 
+from importlib.metadata import PackageNotFoundError, version as _version
+
 from metacausal.aggregation import (
     AggregationStrategy,
     AgreementStrategy,
@@ -34,7 +36,12 @@ from metacausal._warnings import (
     MetaCausalWarning,
 )
 
-__version__ = "0.7.0"
+# Read from installed package metadata (pyproject.toml is the single source
+# of truth) rather than hardcoding a second copy that can drift out of sync.
+try:
+    __version__ = _version("metacausal")
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"
 
 __all__ = [
     "CausalEnsemble",
