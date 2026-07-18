@@ -50,13 +50,13 @@ Documentation = "https://asmahani.github.io/metacausal/"
 # triggers a Dependabot PR, and runs the integration tier
 # (`pytest -m integration`) before we widen.
 econml = ["econml>=0.16.0,<0.16.1"]
-doubleml = ["doubleml>=0.11.2,<0.11.3"]
+doubleml = ["doubleml>=0.11.2,<0.11.4"]
 stochtree = ["stochtree>=0.4.2,<0.4.3"]
 causalml = ["causalml>=0.16.0,<0.16.1"]
 plots = ["matplotlib>=3.5"]
 all = [
     "econml>=0.16.0,<0.16.1",
-    "doubleml>=0.11.2,<0.11.3",
+    "doubleml>=0.11.2,<0.11.4",
     "stochtree>=0.4.2,<0.4.3",
     "causalml>=0.16.0,<0.16.1",
     "matplotlib>=3.5",
