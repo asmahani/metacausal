@@ -52,13 +52,13 @@ Documentation = "https://asmahani.github.io/metacausal/"
 econml = ["econml>=0.16.0,<0.16.1"]
 doubleml = ["doubleml>=0.11.2,<0.11.3"]
 stochtree = ["stochtree>=0.4.2,<0.4.3"]
-causalml = ["causalml>=0.16.0,<0.16.1"]
+causalml = ["causalml>=0.16.0,<0.17.1"]
 plots = ["matplotlib>=3.5"]
 all = [
     "econml>=0.16.0,<0.16.1",
     "doubleml>=0.11.2,<0.11.3",
     "stochtree>=0.4.2,<0.4.3",
-    "causalml>=0.16.0,<0.16.1",
+    "causalml>=0.16.0,<0.17.1",
     "matplotlib>=3.5",
 ]
 dev = [
