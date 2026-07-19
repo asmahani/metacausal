@@ -66,3 +66,21 @@ def truncate_items(items: Iterable[str], *, max_items: int = 4) -> str:
     if len(items) <= max_items:
         return ", ".join(items)
     return ", ".join(items[:max_items]) + ", ..."
+
+
+class SummaryStr(str):
+    """A ``str`` whose REPL/notebook display matches ``print()``.
+
+    Used as the return type of the package's various ``summary()``
+    methods, which build multi-line, human-formatted text. A plain ``str``
+    displays via ``repr()`` when typed bare at a prompt, which shows
+    embedded newlines as literal ``\\n`` rather than rendering them --
+    forcing users to remember to wrap every call in ``print(...)``. This
+    subclass overrides only ``__repr__`` (to match ``__str__``), so bare
+    evaluation looks the same as ``print()`` while every other ``str``
+    behavior -- concatenation, formatting, equality, ``isinstance(x, str)``,
+    etc. -- is unchanged.
+    """
+
+    def __repr__(self) -> str:
+        return str(self)

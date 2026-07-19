@@ -7,7 +7,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from metacausal._formatting import format_interval, format_scalar, summarize_array
+from metacausal._formatting import (
+    SummaryStr,
+    format_interval,
+    format_scalar,
+    summarize_array,
+)
 from metacausal.aggregation.weights import EnsembleWeights
 
 if TYPE_CHECKING:
@@ -121,7 +126,7 @@ class AteEstimate:
             "Spread (max - min): "
             f"{format_scalar(self.spread, digits=digits, signed=signed)}"
         )
-        return "\n".join(lines)
+        return SummaryStr("\n".join(lines))
 
 
 # Backward-compatible alias
@@ -217,7 +222,7 @@ class CateEstimate:
                     "Intercept: "
                     f"{format_scalar(self.ensemble_weights.intercept, digits=digits)}"
                 )
-        return "\n".join(lines)
+        return SummaryStr("\n".join(lines))
 
     def cate_profile(
         self,

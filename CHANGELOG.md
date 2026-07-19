@@ -4,6 +4,10 @@ All notable changes to MetaCausal are documented here. Dates are
 release dates; "Unreleased" entries describe changes on `main` not yet
 tagged.
 
+## Unreleased
+
+- **`summary()` methods now display correctly when typed bare at a REPL/notebook prompt.** `AteEstimate.summary()`, `CateEstimate.summary()`, `CausalEnsemble.summary()`, and `BootstrapResult.summary()` build multi-line, human-formatted text, but as plain `str` returns, bare-expression evaluation (which uses `repr()`, not `str()`) showed embedded newlines as literal `\n` rather than rendering them -- forcing `print(...)` to be remembered every time. They now return `SummaryStr`, a `str` subclass overriding only `__repr__` to match `__str__`; every other `str` behavior (`isinstance`, equality, concatenation, formatting, etc.) is unchanged.
+
 ## 0.7.1 — 2026-07-18
 
 - **Fixed the default R-Learner pool components silently ignoring their HGB propensity model.** CausalML's `BaseRLearner.fit()` assigns `self.model_p = self.propensity_learner` *after* calling `_set_propensity_models()`, which reads `self.model_p` (not `propensity_learner`) to decide whether to use a custom propensity model. On a fresh `BaseRRegressor`/`BaseRClassifier` instance, `model_p` doesn't exist yet at that point, so every first `fit()` silently fell back to CausalML's own `ElasticNetPropensityModel()` default instead of the `HistGradientBoostingClassifier` the default pools intended — and that default's `saga`+`elasticnet` grid search routinely fails to converge on Lalonde-sized data, flooding `ConvergenceWarning`s (particularly noticeable in interactive use, e.g. `python -i` against the manuscript examples). The shipped default pools now set `model_p` directly at construction, alongside the existing `cv_n_jobs=1` workaround. This is a known upstream bug (fixed on CausalML's `master` via [uber/causalml#937](https://github.com/uber/causalml/pull/937), not yet in a PyPI release as of `causalml==0.17.0`); the workaround is harmless once CausalML ships the fix.

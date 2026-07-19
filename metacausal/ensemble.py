@@ -12,7 +12,7 @@ import numpy as np
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
-from metacausal._formatting import truncate_items
+from metacausal._formatting import SummaryStr, truncate_items
 from metacausal._parallel import parallel_map
 from metacausal._warnings import (
     BootstrapWarning,
@@ -357,7 +357,7 @@ class CausalEnsemble:
             lines.append("Components (0):")
         else:
             lines.append("Components: default pool deferred to fit()")
-        return "\n".join(lines)
+        return SummaryStr("\n".join(lines))
 
     def _wrap(self, m: Any) -> CausalEstimator:
         """Auto-detect and wrap a method if needed."""

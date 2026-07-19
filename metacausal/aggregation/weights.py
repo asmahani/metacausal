@@ -8,7 +8,13 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 import pandas as pd
 
-from metacausal._formatting import format_interval, format_scalar, summarize_array, truncate_items
+from metacausal._formatting import (
+    SummaryStr,
+    format_interval,
+    format_scalar,
+    summarize_array,
+    truncate_items,
+)
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -254,7 +260,7 @@ class BootstrapResult:
         )
         if self.cate is not None:
             lines.append(f"CATE: {summarize_array(self.cate, digits=digits)}")
-        return "\n".join(lines)
+        return SummaryStr("\n".join(lines))
 
     def forest(
         self,

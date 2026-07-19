@@ -198,3 +198,54 @@ def test_causalensemble_repr_and_summary_pre_and_post_fit():
     assert "Components (2):" in fitted_summary
     assert "m0" in fitted_summary
     assert "m1" in fitted_summary
+
+
+class TestSummaryStrReplDisplay:
+    """``summary()`` returns are bare-REPL-friendly: ``repr()`` must match
+    ``str()`` (i.e. embedded newlines render rather than showing as literal
+    ``\\n``), while still behaving as ordinary ``str`` everywhere else."""
+
+    def test_ate_summary_repr_matches_str(self):
+        ate = AteEstimate(
+            ate=0.1,
+            component_estimates={"m0": ComponentAteEstimate(ate=0.1)},
+            aggregation="Median",
+        )
+        s = ate.summary()
+        assert repr(s) == str(s)
+        assert isinstance(s, str)
+
+    def test_cate_summary_repr_matches_str(self):
+        cate = CateEstimate(
+            cate=np.array([0.1, 0.2]),
+            component_estimates={"m0": ComponentCateEstimate(cate=np.array([0.1, 0.2]))},
+            aggregation="Median",
+        )
+        s = cate.summary()
+        assert repr(s) == str(s)
+        assert isinstance(s, str)
+
+    def test_causalensemble_summary_repr_matches_str(self):
+        s = CausalEnsemble().summary()
+        assert repr(s) == str(s)
+        assert isinstance(s, str)
+
+    def test_bootstrap_summary_repr_matches_str(self):
+        boot = BootstrapResult(
+            ate=0.5,
+            ate_ci_lower=0.2,
+            ate_ci_upper=0.8,
+            boot_ates=np.array([0.3, 0.5, 0.7]),
+            cate=None,
+            cate_ci_lower=None,
+            cate_ci_upper=None,
+            component_boot_ates={"m0": np.array([0.2, 0.4, 0.6])},
+            n_boot=3,
+            n_failed=0,
+            alpha=0.10,
+            aggregation="Median",
+            method="subsample",
+        )
+        s = boot.summary()
+        assert repr(s) == str(s)
+        assert isinstance(s, str)
