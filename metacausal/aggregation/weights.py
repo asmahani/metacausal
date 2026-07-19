@@ -22,6 +22,37 @@ if TYPE_CHECKING:
     from metacausal.estimators import ComponentAteEstimate, ComponentCateEstimate
 
 
+def _scaled_percentile_ci(
+    dist: np.ndarray,
+    point_estimate: float | np.ndarray,
+    alpha: float,
+    scale: float = 1.0,
+    axis: int | None = None,
+) -> tuple[float, float] | tuple[np.ndarray, np.ndarray]:
+    """Politis-Romano (1994) scaled-percentile CI:
+    ``point_estimate + scale * percentile(dist - point_estimate, level)``.
+
+    ``scale=1.0`` (the nonparametric case, m == n) makes this algebraically
+    reduce to the standard percentile bootstrap. Shared by
+    :meth:`CausalEnsemble.bootstrap`'s internal ATE/CATE CI construction
+    and :meth:`BootstrapResult.ci_at`, so there is one implementation of
+    the formula rather than one per call site.
+
+    Works for both a scalar statistic (``dist`` shape ``(B,)``,
+    ``point_estimate`` a float, ``axis=None``) and a per-point statistic
+    (``dist`` shape ``(B, n)``, ``point_estimate`` shape ``(n,)``,
+    ``axis=0``) -- numpy broadcasts the subtraction along the trailing
+    axis in both cases.
+    """
+    dist = np.asarray(dist, dtype=float)
+    centered = dist - point_estimate
+    lo = point_estimate + scale * np.percentile(centered, 100 * alpha / 2, axis=axis)
+    hi = point_estimate + scale * np.percentile(centered, 100 * (1 - alpha / 2), axis=axis)
+    if axis is None:
+        return float(lo), float(hi)
+    return lo, hi
+
+
 @dataclass
 class EnsembleWeights:
     """Result of weight computation for any non-pointwise aggregation.
@@ -120,6 +151,9 @@ class BootstrapResult:
             CIs use the Politis–Romano scaled-percentile correction).
         subsample_m: Subsample size used when ``method="subsample"``;
             ``None`` for nonparametric.
+        n_train: Original training sample size. Recorded so ``scale``
+            and :meth:`ci_at` can reconstruct the Politis-Romano scale
+            factor after the fact, without needing ``n`` passed back in.
     """
 
     # ATE
@@ -155,6 +189,71 @@ class BootstrapResult:
     ensemble_weights: EnsembleWeights | None = None
     method: str = "nonparametric"
     subsample_m: int | None = None
+    n_train: int = 0
+
+    @property
+    def scale(self) -> float:
+        """Politis-Romano scale factor: ``sqrt(subsample_m / n_train)`` for
+        ``method="subsample"``, ``1.0`` otherwise (including when
+        ``n_train`` wasn't recorded, e.g. a hand-built ``BootstrapResult``)."""
+        if self.method == "subsample" and self.subsample_m is not None and self.n_train > 0:
+            return float(np.sqrt(self.subsample_m / self.n_train))
+        return 1.0
+
+    def ci_at(
+        self,
+        level: float | None = None,
+        *,
+        dist: np.ndarray | None = None,
+        point_estimate: float | None = None,
+    ) -> tuple[float, float]:
+        """Confidence interval at an arbitrary level, reusing this bootstrap
+        run's already-computed replicate distribution(s) -- no re-fit needed.
+
+        By default, reproduces the ensemble's own ATE CI (at ``level``
+        instead of the level fixed when ``bootstrap()`` was called), using
+        the same Politis-Romano scaled-percentile formula (with the
+        ``method="subsample"`` scale correction applied automatically via
+        :attr:`scale`).
+
+        Pass ``dist`` to get a CI for any other 1-d bootstrap distribution
+        carried by this result -- e.g. ``component_boot_ates["BCF"]`` for a
+        per-component CI -- or one you've derived yourself (e.g. a
+        per-replicate mean across components, for an aggregation strategy
+        the ensemble was never actually fit with). ``dist`` and
+        ``point_estimate`` must be overridden together: a bootstrap
+        distribution can only be centered correctly on the point estimate
+        of the *same* statistic it resamples, and there is no way to infer
+        the right point estimate for an arbitrary distribution.
+
+        Parameters:
+            level: Coverage level, e.g. ``0.90`` for a 90% CI. Defaults to
+                ``1 - self.alpha`` (the level this result was already
+                constructed at).
+            dist: Bootstrap replicate distribution, shape ``(B,)``.
+                Defaults to ``self.boot_ates``.
+            point_estimate: Center of the interval. Defaults to
+                ``self.ate``. Required (and only meaningful) together
+                with ``dist``.
+
+        Returns:
+            ``(ci_lower, ci_upper)`` tuple.
+
+        Raises:
+            ValueError: If exactly one of ``dist``/``point_estimate`` is
+                given.
+        """
+        if (dist is None) != (point_estimate is None):
+            raise ValueError(
+                "dist and point_estimate must be overridden together -- "
+                "a bootstrap distribution can only be centered correctly "
+                "on the point estimate of the same statistic it resamples."
+            )
+        level = (1.0 - self.alpha) if level is None else level
+        alpha = 1.0 - level
+        dist = self.boot_ates if dist is None else dist
+        theta_hat = self.ate if point_estimate is None else float(point_estimate)
+        return _scaled_percentile_ci(dist, theta_hat, alpha, self.scale)
 
     def __repr__(self) -> str:
         level = round(100 * (1 - self.alpha))
@@ -169,9 +268,10 @@ class BootstrapResult:
         """Tabular summary of per-component bootstrap ATE statistics.
 
         Returns a DataFrame with one row per component adapter, in the
-        insertion order of ``component_boot_ates``. Each row reports
-        the bootstrap-mean ATE and the ``1 - alpha`` percentile CI
-        (matching the CI convention used by the ensemble itself).
+        insertion order of ``component_boot_ates``. Each row reports the
+        bootstrap-mean ATE and the ``1 - alpha`` CI, via :meth:`ci_at`
+        (matching the CI convention used by the ensemble itself, including
+        the ``method="subsample"`` scale correction).
 
         Returns
         -------
@@ -180,8 +280,8 @@ class BootstrapResult:
 
             * ``name``: adapter name.
             * ``mean``: bootstrap-mean ATE.
-            * ``lo``: ``alpha/2`` lower percentile bound.
-            * ``hi``: ``1 - alpha/2`` upper percentile bound.
+            * ``lo``: lower CI bound.
+            * ``hi``: upper CI bound.
 
         Raises
         ------
@@ -194,15 +294,16 @@ class BootstrapResult:
                 "component_boot_ates is empty; run CausalEnsemble.bootstrap "
                 "before calling component_ate_summary()."
             )
-        lo_pct = 100 * self.alpha / 2
-        hi_pct = 100 * (1 - self.alpha / 2)
         rows = []
         for name, boot in self.component_boot_ates.items():
+            point = self.component_ate_estimates.get(name)
+            point_estimate = point.ate if point is not None else float(np.mean(boot))
+            lo, hi = self.ci_at(dist=boot, point_estimate=point_estimate)
             rows.append({
                 "name": name,
                 "mean": float(np.mean(boot)),
-                "lo": float(np.percentile(boot, lo_pct)),
-                "hi": float(np.percentile(boot, hi_pct)),
+                "lo": lo,
+                "hi": hi,
             })
         return pd.DataFrame(rows, columns=["name", "mean", "lo", "hi"])
 

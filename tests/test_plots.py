@@ -153,6 +153,94 @@ class TestComponentAteSummary:
         with pytest.raises(ValueError, match="component_boot_ates is empty"):
             boot.component_ate_summary()
 
+    def test_nonparametric_point_estimate_source_is_immaterial(self):
+        """With scale=1.0 (method='nonparametric', the default), Politis-
+        Romano centering algebraically cancels out -- centering on the
+        original-fit ate vs. the bootstrap mean gives identical bounds.
+        This mirrors the "centering/recentering cancels out" property
+        ensemble.bootstrap() already relies on for its own ATE CI."""
+        dist = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
+        boot = BootstrapResult(
+            ate=0.5, ate_ci_lower=0.1, ate_ci_upper=0.9,
+            boot_ates=np.array([0.4, 0.5, 0.6]),
+            cate=None, cate_ci_lower=None, cate_ci_upper=None,
+            component_boot_ates={"m0": dist},
+            component_ate_estimates={"m0": ComponentAteEstimate(ate=10.0)},
+        )
+        df = boot.component_ate_summary()
+        row = df.iloc[0]
+        assert row["lo"] == pytest.approx(np.percentile(dist, 2.5))
+        assert row["hi"] == pytest.approx(np.percentile(dist, 97.5))
+
+    def test_subsample_point_estimate_source_changes_bounds(self):
+        """Under method='subsample' (scale != 1.0), centering on the
+        original-fit ate (via component_ate_estimates) vs. the bootstrap
+        mean gives genuinely different bounds -- this is where the
+        component_ate_estimates fallback in component_ate_summary()
+        actually matters."""
+        dist = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
+        common = dict(
+            ate=0.5, ate_ci_lower=0.1, ate_ci_upper=0.9,
+            boot_ates=np.array([0.4, 0.5, 0.6]),
+            cate=None, cate_ci_lower=None, cate_ci_upper=None,
+            component_boot_ates={"m0": dist},
+            method="subsample", subsample_m=50, n_train=200,
+        )
+        boot_with_point = BootstrapResult(
+            **common, component_ate_estimates={"m0": ComponentAteEstimate(ate=10.0)},
+        )
+        boot_without_point = BootstrapResult(**common)  # falls back to mean(dist)
+
+        row_with = boot_with_point.component_ate_summary().iloc[0]
+        row_without = boot_without_point.component_ate_summary().iloc[0]
+        assert row_with["lo"] != pytest.approx(row_without["lo"])
+        assert row_with["hi"] != pytest.approx(row_without["hi"])
+
+        scale = np.sqrt(50 / 200)
+        expected_lo = 10.0 + scale * np.percentile(dist - 10.0, 2.5)
+        assert row_with["lo"] == pytest.approx(expected_lo)
+
+    def test_falls_back_to_bootstrap_mean_when_no_point_estimate(
+        self, boot_result_with_components
+    ):
+        """component_ate_estimates is empty in this fixture, so centering
+        falls back to the bootstrap mean -- reproducing the plain-percentile
+        behavior this method had before ci_at() existed."""
+        df = boot_result_with_components.component_ate_summary()
+        for name, dist in boot_result_with_components.component_boot_ates.items():
+            row = df[df["name"] == name].iloc[0]
+            expected_lo = np.percentile(dist, 2.5)
+            expected_hi = np.percentile(dist, 97.5)
+            assert row["lo"] == pytest.approx(expected_lo)
+            assert row["hi"] == pytest.approx(expected_hi)
+
+    def test_applies_subsample_scale_correction(self):
+        """Regression test: under method='subsample', component CIs must
+        apply the sqrt(m/n) scale correction, matching the ensemble-level
+        CI convention -- previously this method used plain percentile
+        regardless of scheme."""
+        rng = np.random.default_rng(0)
+        dist = rng.normal(0.5, 0.2, size=200)
+        boot = BootstrapResult(
+            ate=0.5, ate_ci_lower=0.1, ate_ci_upper=0.9,
+            boot_ates=np.array([0.4, 0.5, 0.6]),
+            cate=None, cate_ci_lower=None, cate_ci_upper=None,
+            component_boot_ates={"m0": dist},
+            component_ate_estimates={"m0": ComponentAteEstimate(ate=0.55)},
+            method="subsample", subsample_m=50, n_train=200,
+        )
+        df = boot.component_ate_summary()
+        row = df.iloc[0]
+        scale = np.sqrt(50 / 200)
+        centered = dist - 0.55
+        expected_lo = 0.55 + scale * np.percentile(centered, 2.5)
+        expected_hi = 0.55 + scale * np.percentile(centered, 97.5)
+        assert row["lo"] == pytest.approx(expected_lo)
+        assert row["hi"] == pytest.approx(expected_hi)
+        # Sanity: the scale correction must actually change the bounds
+        # relative to plain percentile (scale != 1.0 here).
+        assert row["lo"] != pytest.approx(np.percentile(dist, 2.5))
+
 
 # ---------------------------------------------------------------------------
 # forest()

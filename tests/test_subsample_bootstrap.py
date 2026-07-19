@@ -466,3 +466,110 @@ class TestSubsampleBootstrap:
         replicate_unique = recorded_unique[1:]
         assert all(L == 100 for L in replicate_lens)
         assert all(u == 100 for u in replicate_unique)
+
+
+# ---------------------------------------------------------------------------
+# n_train / scale — needed to reconstruct the Politis-Romano scale factor
+# after the fact (BootstrapResult.ci_at, component_ate_summary).
+# ---------------------------------------------------------------------------
+
+
+class TestScale:
+    def test_n_train_recorded_for_subsample(self):
+        ens = CausalEnsemble([_MockATE(0.5, "a"), _MockATE(0.6, "b")])
+        ens.fit(*_data(n=200))
+        result = ens.bootstrap(n_boot=10, random_state=0, method="subsample")
+        assert result.n_train == 200
+
+    def test_n_train_recorded_for_nonparametric(self):
+        ens = CausalEnsemble([_MockATE(0.5, "a"), _MockATE(0.6, "b")])
+        ens.fit(*_data(n=200))
+        result = ens.bootstrap(n_boot=10, random_state=0)
+        assert result.n_train == 200
+
+    def test_scale_matches_sqrt_m_over_n_for_subsample(self):
+        ens = CausalEnsemble([_MockATE(0.5, "a"), _MockATE(0.6, "b")])
+        ens.fit(*_data(n=200))
+        result = ens.bootstrap(n_boot=10, random_state=0, method="subsample")
+        assert result.scale == pytest.approx(np.sqrt(100 / 200))
+
+    def test_scale_is_one_for_nonparametric(self):
+        ens = CausalEnsemble([_MockATE(0.5, "a"), _MockATE(0.6, "b")])
+        ens.fit(*_data(n=200))
+        result = ens.bootstrap(n_boot=10, random_state=0)
+        assert result.scale == 1.0
+
+    def test_scale_is_one_when_n_train_unset(self):
+        """Hand-built BootstrapResult (n_train defaults to 0) falls back to
+        scale=1.0 rather than dividing by zero."""
+        result = BootstrapResult(
+            ate=0.5, ate_ci_lower=0.1, ate_ci_upper=0.9,
+            boot_ates=np.array([0.4, 0.5, 0.6]),
+            cate=None, cate_ci_lower=None, cate_ci_upper=None,
+            method="subsample", subsample_m=50,
+        )
+        assert result.scale == 1.0
+
+
+# ---------------------------------------------------------------------------
+# ci_at() — CI at an arbitrary level/distribution, reusing an already-
+# computed bootstrap run.
+# ---------------------------------------------------------------------------
+
+
+class TestCiAt:
+    def test_default_matches_ate_ci_at_same_alpha(self):
+        ens = CausalEnsemble([_MockATE(0.5, "a", noise=0.1), _MockATE(0.6, "b", noise=0.1)])
+        ens.fit(*_data(), random_state=7)
+        result = ens.bootstrap(n_boot=30, random_state=0, method="subsample")
+        lo, hi = result.ci_at(1.0 - result.alpha)
+        assert lo == pytest.approx(result.ate_ci_lower)
+        assert hi == pytest.approx(result.ate_ci_upper)
+
+    def test_default_level_matches_construction_alpha(self):
+        ens = CausalEnsemble([_MockATE(0.5, "a", noise=0.1), _MockATE(0.6, "b", noise=0.1)])
+        ens.fit(*_data(), random_state=7)
+        result = ens.bootstrap(n_boot=30, random_state=0, alpha=0.10)
+        lo, hi = result.ci_at()  # level defaults to 1 - alpha
+        assert lo == pytest.approx(result.ate_ci_lower)
+        assert hi == pytest.approx(result.ate_ci_upper)
+
+    def test_wider_level_gives_narrower_interval(self):
+        ens = CausalEnsemble([_MockATE(0.5, "a", noise=0.1), _MockATE(0.6, "b", noise=0.1)])
+        ens.fit(*_data(), random_state=7)
+        result = ens.bootstrap(n_boot=50, random_state=0, method="subsample")
+        lo95, hi95 = result.ci_at(0.95)
+        lo70, hi70 = result.ci_at(0.70)
+        assert (hi70 - lo70) <= (hi95 - lo95)
+
+    def test_component_dist_matches_manual_politis_romano(self):
+        """ci_at() on a per-component distribution reproduces the same
+        formula the ensemble's own ate_ci uses, applied to that component."""
+        ens = CausalEnsemble([_MockATE(0.5, "a", noise=0.1), _MockATE(0.6, "b", noise=0.1)])
+        ens.fit(*_data(), random_state=7)
+        result = ens.bootstrap(n_boot=40, random_state=0, method="subsample")
+
+        dist = result.component_boot_ates["a"]
+        point = result.component_ate_estimates["a"].ate
+        lo, hi = result.ci_at(0.90, dist=dist, point_estimate=point)
+
+        alpha = 0.10
+        centered = dist - point
+        expected_lo = point + result.scale * np.percentile(centered, 100 * alpha / 2)
+        expected_hi = point + result.scale * np.percentile(centered, 100 * (1 - alpha / 2))
+        assert lo == pytest.approx(expected_lo)
+        assert hi == pytest.approx(expected_hi)
+
+    def test_dist_without_point_estimate_raises(self):
+        ens = CausalEnsemble([_MockATE(0.5, "a"), _MockATE(0.6, "b")])
+        ens.fit(*_data())
+        result = ens.bootstrap(n_boot=10, random_state=0)
+        with pytest.raises(ValueError, match="together"):
+            result.ci_at(0.90, dist=result.component_boot_ates["a"])
+
+    def test_point_estimate_without_dist_raises(self):
+        ens = CausalEnsemble([_MockATE(0.5, "a"), _MockATE(0.6, "b")])
+        ens.fit(*_data())
+        result = ens.bootstrap(n_boot=10, random_state=0)
+        with pytest.raises(ValueError, match="together"):
+            result.ci_at(0.90, point_estimate=0.5)

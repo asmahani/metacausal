@@ -30,7 +30,11 @@ from metacausal.aggregation import (
     PointwiseStrategy,
     SupervisedStrategy,
 )
-from metacausal.aggregation.weights import BootstrapResult, EnsembleWeights
+from metacausal.aggregation.weights import (
+    BootstrapResult,
+    EnsembleWeights,
+    _scaled_percentile_ci,
+)
 from metacausal.estimators import (
     AteEstimate,
     CateEstimate,
@@ -1239,6 +1243,7 @@ class CausalEnsemble:
                 ensemble_weights=self.aggregation.ensemble_weights,
                 method=method,
                 subsample_m=m if method == "subsample" else None,
+                n_train=n,
             )
 
         boot_ates = np.array([r[0] for r in valid])
@@ -1251,15 +1256,13 @@ class CausalEnsemble:
         # CI = θ̂ + scale * percentile(T_b - θ̂), with scale = sqrt(m/n).
         # When method="nonparametric" we have m == n, so scale == 1 and the
         # expression reduces algebraically to the standard percentile
-        # bootstrap — the centering/recentering cancels out.
+        # bootstrap — the centering/recentering cancels out. Shared with
+        # BootstrapResult.ci_at() via _scaled_percentile_ci so there is one
+        # implementation of the formula.
         scale = float(np.sqrt(m / n)) if method == "subsample" else 1.0
         theta_hat = float(ate_result.ate)
-        centered_ates = boot_ates - theta_hat
-        ate_ci_lower = float(
-            theta_hat + scale * np.percentile(centered_ates, 100 * alpha / 2)
-        )
-        ate_ci_upper = float(
-            theta_hat + scale * np.percentile(centered_ates, 100 * (1 - alpha / 2))
+        ate_ci_lower, ate_ci_upper = _scaled_percentile_ci(
+            boot_ates, theta_hat, alpha, scale
         )
 
         component_boot_ates = {k: np.array(v) for k, v in boot_comp.items()}
@@ -1269,12 +1272,8 @@ class CausalEnsemble:
         if replicate_cates:
             boot_cates = np.stack(replicate_cates, axis=0)  # (B, n)
             cate_point = cate_result.cate  # shape (n_eval,)
-            centered_cates = boot_cates - cate_point[None, :]
-            cate_ci_lower = cate_point + scale * np.percentile(
-                centered_cates, 100 * alpha / 2, axis=0
-            )
-            cate_ci_upper = cate_point + scale * np.percentile(
-                centered_cates, 100 * (1 - alpha / 2), axis=0
+            cate_ci_lower, cate_ci_upper = _scaled_percentile_ci(
+                boot_cates, cate_point, alpha, scale, axis=0
             )
         else:
             boot_cates = None
@@ -1329,6 +1328,7 @@ class CausalEnsemble:
             ensemble_weights=self.aggregation.ensemble_weights,
             method=method,
             subsample_m=m if method == "subsample" else None,
+            n_train=n,
         )
 
     # ------------------------------------------------------------------
