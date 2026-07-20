@@ -7,19 +7,19 @@ Cross-framework ensembling of causal machine-learning estimators for ATE and poi
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/asmahani/metacausal/blob/main/LICENSE)
 [![Docs](https://img.shields.io/badge/docs-latest-blue)](https://asmahani.github.io/metacausal/)
 
-## What it is
+## What is MetaCausal?
 
-MetaCausal orchestrates multiple causal-ML estimators from different libraries — [EconML](https://github.com/py-why/EconML), [DoubleML](https://docs.doubleml.org), [CausalML](https://github.com/uber/causalml), [stochtree](https://stochtree.ai), or arbitrary user-supplied callables — behind a single protocol, and aggregates their treatment-effect estimates into a single ensemble estimate. Eight aggregation strategies are provided, grouped into three tiers:
+MetaCausal orchestrates multiple causal-ML estimators from different libraries — [EconML](https://www.pywhy.org/EconML/), [DoubleML](https://docs.doubleml.org), [CausalML](https://causalml.readthedocs.io/), [stochtree](https://stochtree.ai), or arbitrary user-supplied callables — behind a single protocol, and aggregates their treatment-effect estimates into a single ensemble estimate. Eight aggregation strategies are provided, grouped into three tiers:
 
-- **Pointwise robust** — Median (default), Mean, Trimmed Mean.
+- **Pointwise** — Median (default), Mean, Trimmed Mean.
 - **Agreement-based** — Consensus Based Averaging, which selects a high-agreement subset of components from pairwise Kendall's τ.
-- **Outcome-supervised** — Causal Stacking, R-Stacking, Q-Aggregation, and Select, which learn weights (or, for Select, choose a single best component) by optimising a causal loss on cross-fitted out-of-fold predictions.
+- **Outcome-supervised** — Causal Stacking, R-Stacking, Q-Aggregation, and Select, which learn weights (or, for Select, choose a single best component) by optimising a causal loss on cross-fitted out-of-fold predictions. These follow published aggregation rules rather than inventing new ones — see the "Reference" column in the table below.
 
-A full-pipeline bootstrap supplies comparable confidence intervals for both ATE and pointwise CATE across heterogeneous components whose native inference machinery is otherwise incomparable.
+A full-pipeline bootstrap refits every component, nuisance model, and aggregation weight on each replicate, so the resulting confidence interval reflects uncertainty from all of these sources rather than just the final point estimate — shortcut bootstraps that freeze weights or nuisance fits across replicates understate variability. A side benefit: because the same procedure applies uniformly regardless of aggregation strategy or component mix, it also yields directly comparable CIs for both ATE and pointwise CATE across heterogeneous components whose native inference machinery is otherwise incomparable.
 
-## Why
+## Motivation
 
-No single causal-ML estimator dominates across data-generating processes, model selection for heterogeneous treatment effects is empirically unreliable, and individual methods can fail catastrophically under specific violations of their own assumptions (overlap breakdown, nuisance misspecification, tree extrapolation). MetaCausal's default pointwise median aggregation gives a 50% breakdown point with no tuning — up to half the component estimators can produce arbitrarily bad estimates without corrupting the ensemble. When outcome data allow learning weights, MetaCausal also ships the three outcome-supervised stackers from the recent CATE-ensemble literature, plus Select as a feasible-selection baseline for comparison.
+No single causal-ML estimator dominates across data-generating processes ([Curth & van der Schaar, 2023](https://proceedings.mlr.press/v202/curth23b.html)), and model selection for heterogeneous treatment effects is empirically unreliable: because the true CATE is never observed, ordinary cross-validation does not apply, and [Mahajan et al. (2024)](https://arxiv.org/abs/2211.01939) benchmark 415 CATE estimators across 78 datasets to find that reliable selection requires careful nuisance-model tuning — and that ensembling can outperform selecting any single estimator outright. Individual methods can also fail catastrophically under specific violations of their own assumptions (overlap breakdown, nuisance misspecification, tree extrapolation). MetaCausal's default pointwise median aggregation gives a 50% breakdown point with no tuning — up to half the component estimators can produce arbitrarily bad estimates without corrupting the ensemble. When outcome data allow learning weights, MetaCausal also ships the three outcome-supervised stackers from the recent CATE-ensemble literature, plus Select as a feasible-selection baseline for comparison.
 
 ## Installation
 
@@ -72,16 +72,16 @@ The three-step `fit → ate / cate → bootstrap` pattern is the recommended one
 
 ## Aggregation strategies at a glance
 
-| Tier | Strategy | String alias / class | Data used |
-|---|---|---|---|
-| Pointwise | **Median** *(default)* | `"median"` / `Median` | Component predictions only |
-| Pointwise | Mean | `"mean"` / `Mean` | Component predictions only |
-| Pointwise | Trimmed Mean | `"trimmed_mean"` / `TrimmedMean` | Component predictions only |
-| Agreement | Consensus Based Averaging | `"cba"` / `CBA` | Component CATE predictions on training data |
-| Supervised | Causal Stacking | `CausalStacking` | Cross-fitted OOF predictions + nuisance |
-| Supervised | R-Stacking | `RStacking` | Cross-fitted OOF predictions + nuisance |
-| Supervised | Q-Aggregation | `QAggregation` | Cross-fitted OOF predictions + nuisance |
-| Supervised | Select (best-by-risk) | `Select` | Cross-fitted OOF predictions + nuisance |
+| Tier | Strategy | String alias / class | Data used | Reference |
+|---|---|---|---|---|
+| Pointwise | **Median** *(default)* | `"median"` / `Median` | Component predictions only | — |
+| Pointwise | Mean | `"mean"` / `Mean` | Component predictions only | — |
+| Pointwise | Trimmed Mean | `"trimmed_mean"` / `TrimmedMean` | Component predictions only | — |
+| Agreement | Consensus Based Averaging | `"cba"` / `CBA` | Component CATE predictions on training data | [Machluf et al., 2026](https://doi.org/10.1080/10543406.2026.2668583) |
+| Supervised | Causal Stacking | `CausalStacking` | Cross-fitted OOF predictions + nuisance | [Han & Wu, 2022](https://arxiv.org/abs/2202.12445) |
+| Supervised | R-Stacking | `RStacking` | Cross-fitted OOF predictions + nuisance | [Nie & Wager, 2021](https://arxiv.org/abs/1712.04912) |
+| Supervised | Q-Aggregation | `QAggregation` | Cross-fitted OOF predictions + nuisance | [Lan & Syrgkanis, 2024](https://proceedings.mlr.press/v238/lan24a.html) |
+| Supervised | Select (best-by-risk) | `Select` | Cross-fitted OOF predictions + nuisance | — *(MetaCausal baseline)* |
 
 ```python
 # By string alias (default configuration)
@@ -189,6 +189,10 @@ print(ens.ate().ate)
 ```python
 from metacausal import CausalEnsemble
 from metacausal.aggregation import CausalStacking
+from metacausal.datasets import load_lalonde
+
+X, T, Y = load_lalonde()  # continuous outcome; reload since the previous
+                           # recipe rebound X, T, Y to a binary outcome
 
 ens = CausalEnsemble(aggregation=CausalStacking())
 ens.fit(X, T, Y, random_state=42)
@@ -227,6 +231,8 @@ The optional `metacausal.plots` submodule (installed via the `[plots]` extra) pr
 - `weights(ens)` — aggregation weight bars (agreement-based and supervised strategies).
 - `cate_profile(source, x, xlabel=...)` — ensemble CATE along one covariate, with optional bootstrap band and per-component overlay.
 - `disagreement(ens, X)` — pairwise component-CATE rank-correlation heatmap.
+
+Each function is also available as a thin method on the class it plots — e.g. `boot.forest()` is equivalent to `forest(boot)`, and `ens.weights()` to `weights(ens)`.
 
 ```python
 from metacausal.plots import forest, cate_profile
@@ -290,6 +296,15 @@ This exclusive-outer-parallelism design also covers the estimators MetaCausal wr
 
 The outer process (your main script) keeps the platform-default BLAS thread count, which is fine on macOS and Windows. On Linux, where joblib's loky backend can occasionally deadlock at fork time when the parent's BLAS pool is already running threads, defensive users may want to set the standard thread env vars (`OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`, `MKL_NUM_THREADS=1`, `NUMEXPR_NUM_THREADS=1`, `VECLIB_MAXIMUM_THREADS=1`) before invoking Python. The bundled replication runner and the test suite's `tests/conftest.py` set these automatically, so reviewers and contributors do not need the shell prefix.
 
+> **Known issue — `CausalForestDML` under heavy bootstrap parallelism.** EconML's generalized-random-forest tree builder (`econml.tree`) intermittently segfaults (SIGSEGV/SIGBUS) under the repeated component refits that `bootstrap()`/`estimate(..., n_boot=...)` perform on the default pool — a latent out-of-bounds bug in the upstream library, triggered probabilistically and more often at higher `n_jobs`/`n_boot` ([py-why/EconML#470](https://github.com/py-why/EconML/issues/470), open and unfixed as of EconML 0.16.0). The other eight default components are unaffected. If you hit it, drop `CausalForestDML` from the pool:
+>
+> ```python
+> from metacausal.defaults import default_methods
+>
+> methods = [m for m in default_methods() if type(m).__name__ != "CausalForestDML"]
+> ens = CausalEnsemble(methods=methods)
+> ```
+
 ```python
 # Parallelise supervised cross-fitting, deterministic:
 ens = CausalEnsemble(aggregation=CausalStacking())
@@ -310,7 +325,7 @@ A BibTeX entry will be added here when the arXiv preprint of the accompanying ma
 
 ## Release notes
 
-See [CHANGELOG.md](CHANGELOG.md) for the full version history. Latest: **0.7.0** — a new `Select` aggregation strategy, a core-oversubscription fix for CausalML's R-Learner, plotting functions now also reachable as methods, a Sphinx API reference, and several non-executable docstring/README example fixes.
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ## License
 
