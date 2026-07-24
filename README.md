@@ -47,6 +47,7 @@ Python 3.11 or later is required.
 
 ## Quick start
 
+<!--phmdoctest-share-names-->
 ```python
 from metacausal import CausalEnsemble
 from metacausal.datasets import load_lalonde
@@ -63,12 +64,14 @@ ens.fit(X, T, Y, random_state=42)
 ate = ens.ate()
 print(ate.summary())
 
-# Full-pipeline bootstrap confidence interval
-boot = ens.bootstrap(n_boot=200, random_state=42, n_jobs=-1)
+# Full-pipeline bootstrap confidence interval. n_boot=10 keeps this
+# snippet quick to run; bump to the n_boot=200 default (or higher) for
+# publication-quality intervals.
+boot = ens.bootstrap(n_boot=10, random_state=42, n_jobs=-1)
 print(boot.summary())
 ```
 
-The three-step `fit → ate / cate → bootstrap` pattern is the recommended one, because it lets you inspect intermediate state and swap aggregation strategies on an already-fitted ensemble. The convenience wrapper `ens.estimate(X, T, Y, n_boot=200, ...)` does `fit + bootstrap` (or `fit + ate`) in a single call.
+The three-step `fit → ate / cate → bootstrap` pattern is the recommended one, because it lets you inspect intermediate state and swap aggregation strategies on an already-fitted ensemble. The convenience wrapper `ens.estimate(X, T, Y, n_boot=10, ...)` does `fit + bootstrap` (or `fit + ate`) in a single call.
 
 ## Aggregation strategies at a glance
 
@@ -198,9 +201,10 @@ ens = CausalEnsemble(aggregation=CausalStacking())
 ens.fit(X, T, Y, random_state=42)
 
 # Pointwise CATE CIs at X_eval (any covariate matrix; omit to
-# evaluate at the training X instead)
+# evaluate at the training X instead). n_boot=10 keeps this snippet
+# quick to run; bump to 200+ for publication-quality intervals.
 X_eval = X
-boot = ens.bootstrap(X_eval, n_boot=200, random_state=42, n_jobs=-1)
+boot = ens.bootstrap(X_eval, n_boot=10, random_state=42, n_jobs=-1)
 
 print(boot.cate)           # ensemble CATE at X_eval, shape (n_eval,)
 print(boot.cate_ci_lower)  # pointwise 95% lower bound
@@ -248,6 +252,7 @@ MetaCausal exposes five injection points that let researchers extend the package
 
 The lowest-effort path for adding a new estimator is `GenericCATEAdapter`, which wraps a fit function, a CATE prediction function, and (optionally) an ATE prediction function into a component without implementing the full protocol:
 
+<!--phmdoctest-skip-->
 ```python
 from metacausal import CausalEnsemble, GenericCATEAdapter
 
@@ -294,11 +299,12 @@ A single `n_jobs` knob on `fit`, `bootstrap`, and `estimate` routes parallelism 
 
 This exclusive-outer-parallelism design also covers the estimators MetaCausal wraps, not just its own workers: for EconML, CausalML, DoubleML, and stochtree components, MetaCausal suppresses the wrapped estimator's own internal parallelism knob (EconML/DoubleML's `n_jobs`, CausalML's `cv_n_jobs`) whenever it runs inside one of MetaCausal's workers, as an ongoing guarantee rather than a one-off fix. Custom components (`GenericCATEAdapter`, arbitrary callables) are not covered automatically — see "Extending MetaCausal" above for the cooperation contract if your own model parallelizes internally.
 
-The outer process (your main script) keeps the platform-default BLAS thread count, which is fine on macOS and Windows. On Linux, where joblib's loky backend can occasionally deadlock at fork time when the parent's BLAS pool is already running threads, defensive users may want to set the standard thread env vars (`OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`, `MKL_NUM_THREADS=1`, `NUMEXPR_NUM_THREADS=1`, `VECLIB_MAXIMUM_THREADS=1`) before invoking Python. The bundled replication runner and the test suite's `tests/conftest.py` set these automatically, so reviewers and contributors do not need the shell prefix.
+The outer process (your main script) keeps the platform-default BLAS thread count, which is fine on macOS and Windows. On Linux, where joblib's loky backend can occasionally deadlock at fork time when the parent's BLAS pool is already running threads, defensive users may want to set the standard thread env vars (`OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`, `MKL_NUM_THREADS=1`, `NUMEXPR_NUM_THREADS=1`, `VECLIB_MAXIMUM_THREADS=1`) before invoking Python. This package's own test suite (`tests/conftest.py`) sets these automatically, so contributors running `pytest` locally do not need the shell prefix.
 
 > **Known issue — `CausalForestDML` under heavy bootstrap parallelism.** EconML's generalized-random-forest tree builder (`econml.tree`) intermittently segfaults (SIGSEGV/SIGBUS) under the repeated component refits that `bootstrap()`/`estimate(..., n_boot=...)` perform on the default pool — a latent out-of-bounds bug in the upstream library, triggered probabilistically and more often at higher `n_jobs`/`n_boot` ([py-why/EconML#470](https://github.com/py-why/EconML/issues/470), open and unfixed as of EconML 0.16.0). The other eight default components are unaffected. If you hit it, drop `CausalForestDML` from the pool:
 >
 > ```python
+> from metacausal import CausalEnsemble
 > from metacausal.defaults import default_methods
 >
 > methods = [m for m in default_methods() if type(m).__name__ != "CausalForestDML"]
@@ -306,12 +312,17 @@ The outer process (your main script) keeps the platform-default BLAS thread coun
 > ```
 
 ```python
+from metacausal import CausalEnsemble
+from metacausal.aggregation import CausalStacking
+
 # Parallelise supervised cross-fitting, deterministic:
 ens = CausalEnsemble(aggregation=CausalStacking())
 ens.fit(X, T, Y, random_state=42, n_jobs=-1)
 
-# Or: full fit + bootstrap pipeline with bootstrap-level parallelism:
-boot = ens.estimate(X, T, Y, n_boot=500, random_state=42, n_jobs=-1)
+# Or: full fit + bootstrap pipeline with bootstrap-level parallelism.
+# n_boot=10 keeps this snippet quick to run; bump to 500+ for
+# publication-quality intervals.
+boot = ens.estimate(X, T, Y, n_boot=10, random_state=42, n_jobs=-1)
 ```
 
 ## Citation

@@ -6,6 +6,13 @@ tagged.
 
 ## Unreleased
 
+## 0.7.3 — 2026-07-24
+
+- **README bootstrap recipes now use `n_boot=10`, not `200`/`500`.** A code comment at each call site states the recommended `200`+ (`500`+ for the last recipe) for real use. This keeps the examples fast to actually run, and — paired with the new CI gate below — lets every README recipe execute in about a minute instead of the 10+ minutes the documented values would take across the full multi-framework default pool.
+- **Added a mechanical README example gate to CI.** A new `docs` job step (`phmdoctest`) extracts every fenced Python block from `README.md` and executes it, unmodified, on every push — closing the same class of gap the docstring doctest gate (0.7.0) closed for docstrings: a plain code block, however carefully checked by hand once, can silently drift as the package evolves without something actually running it.
+- **Fixed two more non-executable README snippets, found while building that gate.** The `CausalForestDML`-workaround recipe (under the "Known issue" callout) and the closing "Reproducibility and parallelism" recipe were each missing an import (`CausalEnsemble`; `CausalEnsemble` and `CausalStacking` respectively) that a reader copy-pasting just that snippet would have hit as a `NameError` — the same bug class as the two README fixes in 0.7.0 and 0.7.2, just not yet mechanically caught until this release's gate existed.
+- **Removed a stray reference to "the bundled replication runner"** from the "Reproducibility and parallelism" section — an artifact of this repository's split from the manuscript/replication-material repository; no such runner is bundled here.
+
 ## 0.7.2 — 2026-07-20
 
 - **Fixed a data-contamination bug in the README's "CATE estimation with a supervised strategy" recipe.** It relied on `X, T, Y` without redefining them, per the "Usage recipes" convention — but the preceding "Binary outcome on real data" recipe rebinds `X, T, Y` to a binary outcome, so running the recipes in order silently fit `CausalStacking` against binary data instead of the continuous Lalonde outcome the recipe's own comments describe. It now reloads `X, T, Y = load_lalonde()` explicitly.

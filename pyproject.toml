@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "metacausal"
-version = "0.7.2"
+version = "0.7.3"
 description = "Cross-framework causal-ML ensembles for ATE and CATE with full-pipeline bootstrap inference"
 readme = "README.md"
 license = "MIT"
@@ -70,6 +70,12 @@ docs = [
     "furo>=2024.1.29",
     "myst-parser>=2.0",
     "sphinx-copybutton>=0.5.2",
+    # Extracts and executes README.md's fenced Python blocks as pytest
+    # cases (see .github/workflows/ci.yml's "docs" job) -- the mechanical
+    # check called for in the v3 point-to-point reply so a README example
+    # that stops running (e.g. an undefined name) fails CI instead of
+    # only being caught by manual review.
+    "phmdoctest>=1.4.0",
 ]
 
 [tool.setuptools.packages.find]

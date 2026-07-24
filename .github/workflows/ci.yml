@@ -93,6 +93,20 @@ jobs:
         # instead of silently going stale.
         run: python -m sphinx -b doctest docs docs/_build/doctest
 
+      - name: Run README example gate
+        # Generates a pytest file from README.md's fenced Python blocks
+        # (as-is, not committed -- docs/_build/ is gitignored) and runs
+        # it, so a README example that stops running (undefined name,
+        # wrong kwarg, ...) fails CI the same way a stale docstring
+        # example does above. README code uses n_boot=10 (a comment
+        # notes the 200+ recommended for real use) precisely so this
+        # runs in about a minute rather than the ~10+ min the documented
+        # values would take across the full multi-framework default pool.
+        run: |
+          mkdir -p docs/_build/readme_test
+          phmdoctest README.md --outfile docs/_build/readme_test/test_readme.py
+          pytest docs/_build/readme_test/test_readme.py -v
+
   deploy-docs:
     needs: docs
     # GitHub Pages publishing is unavailable on a private repo (confirmed
