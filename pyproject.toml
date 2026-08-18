@@ -49,13 +49,13 @@ Documentation = "https://asmahani.github.io/metacausal/"
 # Patch-level caps mean every upstream release lands outside the cap,
 # triggers a Dependabot PR, and runs the integration tier
 # (`pytest -m integration`) before we widen.
-econml = ["econml>=0.16.0,<0.16.1"]
+econml = ["econml>=0.16.0,<0.17.1"]
 doubleml = ["doubleml>=0.11.2,<0.11.5"]
 stochtree = ["stochtree>=0.4.2,<0.4.6"]
 causalml = ["causalml>=0.16.0,<0.17.1"]
 plots = ["matplotlib>=3.5"]
 all = [
-    "econml>=0.16.0,<0.16.1",
+    "econml>=0.16.0,<0.17.1",
     "doubleml>=0.11.2,<0.11.5",
     "stochtree>=0.4.2,<0.4.6",
     "causalml>=0.16.0,<0.17.1",
