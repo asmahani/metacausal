@@ -6,6 +6,8 @@ tagged.
 
 ## Unreleased
 
+- **Widened the `doubleml` and `econml` caps** to admit each library's current latest patch/minor (`doubleml<0.11.5`, `econml<0.17.1`), validating CI (including `pytest -m integration`) against `doubleml==0.11.4` and `econml==0.17.0`. Floors are unchanged; per the versioning policy in `pyproject.toml`, only the cap moves until the floor itself is deliberately re-validated and bumped.
+
 ## 0.7.3 — 2026-07-24
 
 - **README bootstrap recipes now use `n_boot=10`, not `200`/`500`.** A code comment at each call site states the recommended `200`+ (`500`+ for the last recipe) for real use. This keeps the examples fast to actually run, and — paired with the new CI gate below — lets every README recipe execute in about a minute instead of the 10+ minutes the documented values would take across the full multi-framework default pool.
