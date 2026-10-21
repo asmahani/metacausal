@@ -1,5 +1,7 @@
 # MetaCausal
 
+> **Final release.** metacausal 0.7.5 will not receive further fixes or features. Development continues as [XCausal](https://github.com/asmahani/xcausal) (`pip install xcausal`). Documentation: <https://asmahani.github.io/xcausal/>
+
 Cross-framework ensembling of causal machine-learning estimators for ATE and pointwise CATE, with full-pipeline bootstrap inference.
 
 [![PyPI version](https://img.shields.io/pypi/v/metacausal)](https://pypi.org/project/metacausal/)

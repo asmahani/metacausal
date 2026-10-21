@@ -1,5 +1,6 @@
 """MetaCausal — Robust treatment effect estimation via ensembling."""
 
+import warnings
 from importlib.metadata import PackageNotFoundError, version as _version
 
 from metacausal.aggregation import (
@@ -42,6 +43,14 @@ try:
     __version__ = _version("metacausal")
 except PackageNotFoundError:
     __version__ = "0.0.0+unknown"
+
+warnings.warn(
+    f"metacausal {__version__} is the final release and will not receive "
+    "further fixes or features. Future development continues in xcausal "
+    "(https://pypi.org/project/xcausal/).",
+    FutureWarning,
+    stacklevel=2,
+)
 
 __all__ = [
     "CausalEnsemble",

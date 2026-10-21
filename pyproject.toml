@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "metacausal"
-version = "0.7.4"
+version = "0.7.5"
 description = "Cross-framework causal-ML ensembles for ATE and CATE with full-pipeline bootstrap inference"
 readme = "README.md"
 license = "MIT"
@@ -14,7 +14,7 @@ authors = [
     {name = "Alireza S. Mahani", email = "alireza.s.mahani@gmail.com"},
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 7 - Inactive",
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
