@@ -39,6 +39,24 @@ from metacausal.aggregation import CausalStacking, CrossFitSplit
 from metacausal.estimators import ComponentAteEstimate, ComponentCateEstimate
 
 
+def test_import_emits_final_release_futurewarning():
+    """0.7.5 is the terminal release; importing the package tells users so."""
+    import importlib
+
+    import metacausal
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        importlib.reload(metacausal)
+
+    messages = [
+        str(item.message)
+        for item in caught
+        if issubclass(item.category, FutureWarning)
+    ]
+    assert any("final release" in message and "xcausal" in message for message in messages)
+
+
 # ---------------------------------------------------------------------------
 # Hierarchy
 # ---------------------------------------------------------------------------

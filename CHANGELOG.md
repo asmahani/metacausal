@@ -6,6 +6,10 @@ tagged.
 
 ## Unreleased
 
+## 0.7.5 — 2026-10-21
+
+- **Final release.** The implementation is unchanged from 0.7.4. Importing `metacausal` now emits a `FutureWarning`. This package will not receive further fixes or features; development continues in [`xcausal`](https://github.com/asmahani/xcausal) (0.8.0 on PyPI).
+
 ## 0.7.4 — 2026-10-17
 
 - **Widened the `doubleml`, `econml`, and `causalml` caps** to admit each library's current latest patch/minor (`doubleml<0.11.5`, `econml<0.17.1`, `causalml<0.18.1`), validating CI (including `pytest -m integration`) against `doubleml==0.11.4`, `econml==0.17.0`, and `causalml==0.18.0`. Floors are unchanged; per the versioning policy in `pyproject.toml`, only the cap moves until the floor itself is deliberately re-validated and bumped.
